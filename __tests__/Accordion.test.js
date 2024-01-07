@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import Accordion from "../src/Components/Accordion";
 
-describe("Testing Accordion component", async () => {
+describe("Testing Accordion component", () => {
 	it("Should render", async () => {
 		render(<Accordion />);
+		const element = await screen.getByText("Accordion");
+		expect(element).toBeNull();
 	});
 
 	it("Should optionally display a text header", async () => {});
