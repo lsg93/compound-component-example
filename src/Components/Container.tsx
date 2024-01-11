@@ -3,7 +3,7 @@ type ContainerProps = {
 };
 
 function Container({ children }: ContainerProps) {
-	return <div className="container max-w-full">{children}</div>;
+	return <div className="container max-w-full flex">{children}</div>;
 }
 
 export default Container;
