@@ -4,8 +4,9 @@ import {
 	AccordionContextType,
 	AccordionHeaderProps,
 	AccordionItemBodyProps,
-	AccordionButtonComponents,
+	AccordionToggleComponents,
 	AccordionItemButtonProps,
+	AccordionItemContextType,
 	AccordionItemProps,
 	AccordionItemTitleProps,
 } from "./types";
@@ -15,9 +16,13 @@ const AccordionItemContext = createContext<AccordionItemContextType | null>(
 	null
 );
 
-// Get context, can
 const getAccordionContext = () => {
 	const context = useContext(AccordionContext);
+	return context ?? null;
+};
+
+const getAccordionItemContext = () => {
+	const context = useContext(AccordionItemContext);
 	return context ?? null;
 };
 
@@ -27,23 +32,12 @@ function Accordion({ children, multiple, defaultOpen }: AccordionProps) {
 		defaultOpen ? [defaultOpen] : []
 	);
 
-	/**
-	 * Handles toggling of individual items in the accordion
-	 * @param index
-	 */
-	const handleToggle = (index: number) => {
-		// Use array intersection
-		console.log("clicked");
-		console.log(index);
-		// setActiveItems([index]);
-	};
-
 	// Needs to be memoized otherwise
 	// functions will recreate themselves on rerender.
 	const contextValues = useMemo(() => {
 		return {
 			activeItems,
-			handleToggle,
+			setActiveItems,
 		};
 	}, [JSON.stringify(activeItems)]);
 
@@ -59,125 +53,100 @@ function AccordionHeader({ children }: AccordionHeaderProps) {
 }
 
 function AccordionItem({ children, index }: AccordionItemProps) {
-	const { handleToggle } = getAccordionContext();
+	const { activeItems, setActiveItems } = getAccordionContext();
 
-	// Some hacky stuff here... not sure about this, but probably will work just fine.
-	// I guess, if no child component that handles toggle is specified, then pass toggle down to title here
-	// Look at all children
-	// Figure out if a child that could be used for toggling is present
-	// If present, pass down handleToggle with index to that component
-	// If not, pass it to title component.
+	// Need to decide which child component is responsible for toggling in this parent component
+	// And bake this into the handle toggle function.
+	// This will alleviate messy cloning of elements with extra props.
+	// Figure out which child should handle toggle :
+	// Filter down all children to the ones that can handle a toggle
+	// And take the index of the last one.
 
-	// TODO : Below works, but Needs major refactoring
+	// Check against TS enum to see which components are allowed to handle toggle.
+	const canHandleToggle = (name: string) =>
+		(Object.values(AccordionToggleComponents) as string[]).includes(name);
 
-	console.log(`for item index ${index}`);
+	// Could use filter and findLastIndex() to make this cleaner but only works on newer browsers.
+	const componentResponsibleForToggle = React.Children.toArray(children)
+		.map((child) => {
+			return canHandleToggle(child.type.name);
+		})
+		.lastIndexOf(true);
 
-	const wrapChildWithToggle = (child: React.ReactNode) => {
-		console.log(`wrapping ${child?.type.name} with toggle func`);
-		return React.cloneElement(child, {
-			handleToggle: () => handleToggle(index),
-		});
-	};
-
-	const wrapChildWithIndex = (child: React.ReactNode) => {
-		return React.cloneElement(child, { index });
-	};
-
-	let canHandleToggle = (name: string) =>
-		(Object.values(AccordionButtonComponents) as string[]).includes(name);
-
-	const childrenWithToggleAndIndex = () => {
-		let childrenWithIndex = React.Children.map(children, (child) =>
-			wrapChildWithIndex(child)
+	if (componentResponsibleForToggle === -1) {
+		throw Error(
+			"There are no child components responsible for toggling this item."
 		);
+	}
 
-		let childWithToggleExists = false;
-
-		let childrenWithToggleAndIndex = React.Children.map(
-			childrenWithIndex,
-			(child) => {
-				// If there is a child with the toggle added, just return the child with the relevant index.
-				// If no toggle has been added and the child is one that is designated as handling toggle,
-				// add the toggle function to its props
-				if (canHandleToggle(child.type.name) && !childWithToggleExists) {
-					childWithToggleExists = true;
-					return wrapChildWithToggle(child);
-				}
-				return child;
+	// Create context once we know which child component is responsible for handling toggling.
+	const contextValues = {
+		index,
+		isActive: activeItems.indexOf(index) !== -1,
+		toggleHandler: function (canToggle: boolean) {
+			if (!canToggle) return;
+			if (contextValues.isActive) {
+				//TODO
+				setActiveItems([]);
+				console.log(`handle closing child ${index + 1}`);
+			} else {
+				//TODO
+				setActiveItems([index]);
+				console.log(`handle opening child ${index + 1}`);
 			}
-		);
-
-		// As a failsafe, add the toggle to the title component.
-		if (!childWithToggleExists) {
-			const titleComponentIndex = React.Children.toArray(
-				childrenWithToggleAndIndex
-			).findIndex((child) => child.type.name === "AccordionTitle");
-
-			if (titleComponentIndex === -1) {
-				throw new Error(
-					"Accordion Items must have a title as one of their children."
-				);
-			}
-			//Replace the title component with one with a toggle.
-			childrenWithToggleAndIndex = childrenWithToggleAndIndex?.map(
-				(child, i) => {
-					if (i !== titleComponentIndex) return child;
-					return wrapChildWithToggle(child);
-				}
-			);
-		}
-
-		return childrenWithToggleAndIndex;
+		},
 	};
 
 	return (
-		<div className="flex border-2 flex-wrap">
-			{childrenWithToggleAndIndex()}
-		</div>
+		<AccordionItemContext.Provider value={contextValues}>
+			<div className="flex border-2 flex-wrap">
+				{React.Children.map(children, (child, index) => {
+					return React.cloneElement(child as React.ReactElement, {
+						handlesToggle: index === componentResponsibleForToggle,
+					});
+				})}
+			</div>
+		</AccordionItemContext.Provider>
 	);
 }
 
-function AccordionBody({
-	children,
-	index,
-}: AccordionItemBodyProps & { index?: number }) {
-	const { activeItems } = getAccordionContext();
-	const display = activeItems.indexOf(index) !== -1;
+function AccordionBody({ children }: AccordionItemBodyProps) {
+	const { isActive } = getAccordionItemContext();
 	return (
-		<div className={`${display ? "" : "hidden"} basis-full h-60 border-2 p-2 `}>
+		<div
+			className={`${isActive ? "" : "hidden"} basis-full h-60 border-2 p-2 `}
+		>
 			{children}
 		</div>
 	);
 }
 
 function AccordionButton({
-	handleToggle = null,
-}: {
-	handleToggle: () => void;
-}) {
-	// should take on/off props
-	// should take icons
+	children = "",
+	handlesToggle,
+}: AccordionItemButtonProps) {
+	const { toggleHandler } = getAccordionItemContext();
+
 	return (
-		<div className="ms-auto w-16 border-2" onClick={handleToggle}>
-			Button
+		<div
+			className="ms-auto w-16 border-2"
+			onClick={() => toggleHandler(handlesToggle)}
+		>
+			{children || "Button"}
 		</div>
 	);
 }
 
 function AccordionTitle({
 	children,
-	handleToggle,
-	index,
-}: AccordionItemTitleProps & { index: number; handleToggle?: () => void }) {
-	if (handleToggle) {
-		console.log(`title @ index ${index} is clickable`);
-	} else {
-		console.log(`title @ index ${index} is not clickable`);
-	}
+	handlesToggle = false,
+}: AccordionItemTitleProps) {
+	const { toggleHandler } = getAccordionItemContext();
+
 	return (
 		<div
-			onClick={handleToggle ? handleToggle : () => null}
 			className="flex-1 text-xl"
+			onClick={() => toggleHandler(handlesToggle)}
 		>
 			<span>{children}</span>
 		</div>

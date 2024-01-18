@@ -16,23 +16,27 @@ export type AccordionItemBodyProps = {
 	readonly children: React.ReactNode;
 };
 
-export enum AccordionButtonComponents {
+export enum AccordionToggleComponents {
+	TITLE = "AccordionTitle",
 	BUTTON = "AccordionButton",
 }
 
 export type AccordionItemButtonProps = {
-	children: string;
+	children?: string;
+	handlesToggle?: boolean;
 };
 
 export type AccordionItemTitleProps = {
 	readonly children: string;
+	handlesToggle?: boolean;
 };
 
 export type AccordionContextType = {
 	activeItems: number[];
-	handleToggle: (index: number) => void;
+	setActiveItems: (index: number) => void;
 };
 
 export type AccordionItemContextType = {
-	index: number;
+	isActive: boolean;
+	toggleHandler: (val: boolean) => void;
 };
