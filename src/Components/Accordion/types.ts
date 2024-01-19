@@ -1,6 +1,6 @@
 export type AccordionProps = {
 	readonly children: React.ReactNode;
-	multiple: boolean; // Specifies whether multiple parts of the accordion be opened at once
+	allowToggleMultiple?: boolean; // Specifies whether multiple parts of the accordion be opened at once
 	defaultOpen?: number; // Optionally specifies an index that should be open by default.
 };
 export type AccordionHeaderProps = {
@@ -33,7 +33,7 @@ export type AccordionItemTitleProps = {
 
 export type AccordionContextType = {
 	activeItems: number[];
-	setActiveItems: (index: number) => void;
+	setActiveItems: React.Dispatch<React.SetStateAction<Array<number>>>;
 };
 
 export type AccordionItemContextType = {

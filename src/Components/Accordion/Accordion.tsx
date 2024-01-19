@@ -26,7 +26,11 @@ const getAccordionItemContext = () => {
 	return context ?? null;
 };
 
-function Accordion({ children, multiple, defaultOpen }: AccordionProps) {
+function Accordion({
+	children,
+	allowToggleMultiple = false,
+	defaultOpen,
+}: AccordionProps) {
 	// functionality goes here...
 	const [activeItems, setActiveItems] = useState<number[]>(
 		defaultOpen ? [defaultOpen] : []
@@ -36,6 +40,7 @@ function Accordion({ children, multiple, defaultOpen }: AccordionProps) {
 	// functions will recreate themselves on rerender.
 	const contextValues = useMemo(() => {
 		return {
+			allowToggleMultiple,
 			activeItems,
 			setActiveItems,
 		};
@@ -53,7 +58,8 @@ function AccordionHeader({ children }: AccordionHeaderProps) {
 }
 
 function AccordionItem({ children, index }: AccordionItemProps) {
-	const { activeItems, setActiveItems } = getAccordionContext();
+	const { activeItems, allowToggleMultiple, setActiveItems } =
+		getAccordionContext();
 
 	// Need to decide which child component is responsible for toggling in this parent component
 	// And bake this into the handle toggle function.
@@ -86,13 +92,15 @@ function AccordionItem({ children, index }: AccordionItemProps) {
 		toggleHandler: function (canToggle: boolean) {
 			if (!canToggle) return;
 			if (contextValues.isActive) {
-				//TODO
-				setActiveItems([]);
-				console.log(`handle closing child ${index + 1}`);
+				setActiveItems((prev: number[]) => {
+					return allowToggleMultiple
+						? prev.filter((openIndex: number) => openIndex !== index)
+						: [];
+				});
 			} else {
-				//TODO
-				setActiveItems([index]);
-				console.log(`handle opening child ${index + 1}`);
+				setActiveItems((prev: number[]) => {
+					return allowToggleMultiple ? [...prev, index] : [index];
+				});
 			}
 		},
 	};

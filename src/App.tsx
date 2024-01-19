@@ -4,7 +4,7 @@ import Container from "./Components/Container";
 function App() {
 	return (
 		<Container>
-			<Accordion>
+			<Accordion allowToggleMultiple>
 				<Accordion.Header>Example Accordion</Accordion.Header>
 				<Accordion.Item index={0}>
 					<Accordion.Title>Item 1</Accordion.Title>
