@@ -18,12 +18,18 @@ const AccordionItemContext = createContext<AccordionItemContextType | null>(
 
 const getAccordionContext = () => {
 	const context = useContext(AccordionContext);
-	return context ?? null;
+	if (!context) {
+		throw new Error("context not initialised");
+	}
+	return context;
 };
 
 const getAccordionItemContext = () => {
 	const context = useContext(AccordionItemContext);
-	return context ?? null;
+	if (!context) {
+		throw new Error("context not initialised");
+	}
+	return context;
 };
 
 function Accordion({
@@ -74,8 +80,12 @@ function AccordionItem({ children, index }: AccordionItemProps) {
 
 	// Could use filter and findLastIndex() to make this cleaner but only works on newer browsers.
 	const componentResponsibleForToggle = React.Children.toArray(children)
-		.map((child) => {
-			return canHandleToggle(child.type.name);
+		.map((child: React.ReactNode) => {
+			if (React.isValidElement(child)) {
+				const type = child.type as Function;
+				return canHandleToggle(type.name);
+			}
+			return false;
 		})
 		.lastIndexOf(true);
 
@@ -131,7 +141,7 @@ function AccordionBody({ children }: AccordionItemBodyProps) {
 
 function AccordionButton({
 	children = "",
-	handlesToggle,
+	handlesToggle = false,
 }: AccordionItemButtonProps) {
 	const { toggleHandler } = getAccordionItemContext();
 

@@ -33,6 +33,7 @@ export type AccordionItemTitleProps = {
 
 export type AccordionContextType = {
 	activeItems: number[];
+	allowToggleMultiple: boolean;
 	setActiveItems: React.Dispatch<React.SetStateAction<Array<number>>>;
 };
 
